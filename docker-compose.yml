@@ -1,0 +1,105 @@
+version: '3.3'
+services:
+ 
+  #Lumen Service
+  lumen-app:
+    build:
+      context: .
+      dockerfile: Dockerfile-lumen
+    image: hub.docker.com/nurisakbar/parking-app-lumen
+    container_name: lumen-app
+    restart: unless-stopped
+    tty: true
+    environment:
+      SERVICE_NAME: app
+      SERVICE_TAGS: dev
+    working_dir: /var/www/html/
+    volumes:
+      - ./lumen:/var/www/html/
+      - ./php/config.ini:/usr/local/etc/php/conf.d/config.ini
+    networks:
+      - app-network
+    depends_on:
+      - db
+ 
+  #Nginx Lumen
+  lumen-nginx:
+    image: nginx:alpine
+    container_name: lumen-nginx
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "9000:80"
+      # - "443:443"
+    volumes:
+      - ./lumen:/var/www/html/
+      - ./nginx-lumen/conf.d/:/etc/nginx/conf.d/
+    networks:
+      - app-network
+    depends_on:
+      - lumen-app
+   
+  #laravel Service
+  laravel-app:
+    build:
+      context: .
+      dockerfile: Dockerfile-laravel
+    image: hub.docker.com/nurisakbar/parking-app-laravel
+    container_name: laravel-app
+    restart: unless-stopped
+    tty: true
+    environment:
+      SERVICE_NAME: app
+      SERVICE_TAGS: dev
+    working_dir: /var/www/html/
+    volumes:
+      - ./laravel:/var/www/html/
+      - ./php/config.ini:/usr/local/etc/php/conf.d/config.ini
+    networks:
+      - app-network
+ 
+  #Nginx Laravel
+  laravel-nginx:
+    image: nginx:alpine
+    container_name: laravel-nginx
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "8000:80"
+      # - "443:443"
+    volumes:
+      - ./laravel:/var/www/html/
+      - ./nginx-laravel/conf.d/:/etc/nginx/conf.d/
+    networks:
+      - app-network
+    depends_on:
+      - laravel-app
+
+  #MySQL Service
+  db:
+    image: mysql:5.7.32
+    container_name: db
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "3366:3306"
+    environment:
+      MYSQL_DATABASE: laraveldb
+      MYSQL_ROOT_PASSWORD: laraveldb_password
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    volumes:
+      - ./mysql/dbdata:/var/lib/mysql/
+      - ./mysql/my.cnf:/etc/mysql/my.cnf
+    networks:
+      - app-network
+ 
+#Docker Networks
+networks:
+  app-network:
+    driver: bridge
+
+#Volumes
+volumes:
+  dbdata:
+    driver: local
